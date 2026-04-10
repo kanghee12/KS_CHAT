@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KS_CHAT</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-left"></div>
+    <div class="bg-glow bg-glow-right"></div>
+
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-card">
+                <div class="brand-icon">KS</div>
+                <div>
+                    <p class="eyebrow">PRIVATE ROOM</p>
+                    <h1>KS_CHAT</h1>
+                    <p class="brand-copy">사진, 영상, GIF까지 주고받는 실시간 DM 스타일 채팅</p>
+                </div>
+            </div>
+
+            <div class="info-stack">
+                <div class="info-card">
+                    <span class="info-label">대화 상태</span>
+                    <strong id="onlineCount">0명 접속 중</strong>
+                    <p>친구가 나갔다가 다시 들어와도 채팅 기록이 그대로 유지됩니다.</p>
+                </div>
+
+                <div class="info-card">
+                    <span class="info-label">파일 전송</span>
+                    <strong>사진/영상 지원</strong>
+                    <p>이미지와 영상은 최대 {{ max_upload_mb }}MB까지 업로드할 수 있습니다.</p>
+                </div>
+            </div>
+
+            <section class="member-panel">
+                <div class="panel-heading">
+                    <span>접속자 목록</span>
+                </div>
+                <ul id="userList" class="user-list"></ul>
+            </section>
+        </aside>
+
+        <main class="chat-panel">
+            <header class="chat-header">
+                <div>
+                    <p class="eyebrow">KS_CHAT ROOM</p>
+                    <h2>새로운 대화를 시작하고 오래 남겨두는 채팅방</h2>
+                </div>
+
+                <div class="header-actions">
+                    <span id="connectionStatus" class="status-pill">연결 중...</span>
+                    <button id="clearHistoryButton" class="secondary-button" type="button" disabled>새 대화 시작</button>
+                </div>
+            </header>
+
+            <section id="messageList" class="message-list"></section>
+            <div id="typingIndicator" class="typing-indicator">닉네임을 정하고 대화를 시작해보세요.</div>
+
+            <div class="composer-shell">
+                <div class="composer-toolbar">
+                    <button id="uploadButton" class="tool-button" type="button" disabled>사진/영상</button>
+                    <button id="gifButton" class="tool-button" type="button" {% if not giphy_enabled %}disabled{% endif %}>GIPHY</button>
+                    <span id="uploadStatus" class="upload-status">전송할 파일이나 GIF를 선택할 수 있어요.</span>
+                </div>
+
+                <form id="messageForm" class="composer" autocomplete="off">
+                    <input
+                        id="messageInput"
+                        type="text"
+                        maxlength="500"
+                        placeholder="메시지를 입력하세요"
+                        disabled
+                    >
+                    <button id="sendButton" type="submit" disabled>전송</button>
+                </form>
+                <input id="fileInput" type="file" accept="image/*,video/*" hidden>
+            </div>
+        </main>
+    </div>
+
+    <div id="nicknameModal" class="modal-backdrop">
+        <div class="modal-card">
+            <p class="eyebrow">입장하기</p>
+            <h3>채팅에 사용할 닉네임을 정해주세요</h3>
+            <p class="modal-copy">KS_CHAT은 접속자 목록, 입력 중 표시, 대화 기록을 실시간으로 동기화합니다.</p>
+
+            <form id="nicknameForm" class="nickname-form" autocomplete="off">
+                <input
+                    id="nicknameInput"
+                    type="text"
+                    maxlength="20"
+                    placeholder="예: sujin"
+                    required
+                >
+                <button type="submit">채팅 시작</button>
+            </form>
+
+            <p id="nicknameError" class="nickname-error"></p>
+        </div>
+    </div>
+
+    <div id="gifModal" class="modal-backdrop hidden">
+        <div class="gif-modal-card">
+            <div class="gif-modal-header">
+                <div>
+                    <p class="eyebrow">GIF 보내기</p>
+                    <h3>GIPHY에서 반응 GIF 찾기</h3>
+                </div>
+                <button id="closeGifModalButton" class="icon-button" type="button">닫기</button>
+            </div>
+
+            <div class="gif-search-bar">
+                <input id="gifSearchInput" type="text" placeholder="예: happy, wow, 축하">
+                <button id="gifSearchButton" type="button">검색</button>
+            </div>
+
+            <p id="gifHint" class="gif-hint">
+                {% if giphy_enabled %}
+                인기 GIF 또는 검색 결과를 선택해 바로 보낼 수 있습니다.
+                {% else %}
+                GIPHY 기능을 사용하려면 서버 실행 전에 `GIPHY_API_KEY` 환경 변수를 설정해주세요.
+                {% endif %}
+            </p>
+
+            <div id="gifGrid" class="gif-grid"></div>
+            <div id="gifEmptyState" class="gif-empty-state">GIF를 불러오는 중입니다...</div>
+
+            <div class="giphy-footer">
+                <span>Powered by GIPHY</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.APP_CONFIG = {{ {
+            "giphyApiKey": giphy_api_key,
+            "giphyEnabled": giphy_enabled,
+            "maxUploadMb": max_upload_mb
+        } | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
