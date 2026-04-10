@@ -24,6 +24,7 @@ from sqlalchemy import (
     insert,
     select,
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 
@@ -53,6 +54,7 @@ BUCKET_ENABLED = all([S3_BUCKET_NAME, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3
 
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 app.config["SECRET_KEY"] = "ks-chat-secret"
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 app.config["GIPHY_API_KEY"] = os.getenv("GIPHY_API_KEY", "").strip()
