@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KS_CHAT</title>
+    <meta name="theme-color" content="#071018">
+    <meta name="description" content="친구들과 사진, 영상, GIF를 주고받는 설치형 실시간 채팅 앱 KS_CHAT">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="KS_CHAT">
+    <link rel="manifest" href="{{ url_for('web_manifest') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-180.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 </head>
@@ -34,6 +41,17 @@
                     <span class="info-label">파일 전송</span>
                     <strong>사진/영상 지원</strong>
                     <p>이미지와 영상은 최대 {{ max_upload_mb }}MB까지 업로드할 수 있습니다.</p>
+                </div>
+
+                <div class="info-card install-card">
+                    <span class="info-label">앱처럼 쓰기</span>
+                    <strong>설치 + 기본 알림</strong>
+                    <p id="notificationHint">홈 화면에 설치하고 알림을 켜두면 새 메시지를 더 빨리 확인할 수 있어요.</p>
+
+                    <div class="app-actions">
+                        <button id="installButton" class="secondary-button" type="button" hidden>앱 설치</button>
+                        <button id="notificationButton" class="secondary-button" type="button">알림 켜기</button>
+                    </div>
                 </div>
             </div>
 

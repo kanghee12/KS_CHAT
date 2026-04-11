@@ -184,6 +184,26 @@ input {
     font-size: 1.08rem;
 }
 
+.app-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.install-card .secondary-button {
+    flex: 1;
+}
+
+.secondary-button.active {
+    border-color: rgba(71, 208, 140, 0.35);
+    background: rgba(71, 208, 140, 0.14);
+    color: #d9ffea;
+}
+
+.secondary-button[hidden] {
+    display: none;
+}
+
 .member-panel {
     display: flex;
     flex: 1;
@@ -429,10 +449,44 @@ input {
 }
 
 .message-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     padding: 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 22px;
+    border-radius: 22px 22px 22px 10px;
     background: rgba(255, 255, 255, 0.04);
+}
+
+.message-card::after {
+    content: "";
+    position: absolute;
+    left: -8px;
+    bottom: 12px;
+    width: 16px;
+    height: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom-left-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    transform: rotate(24deg);
+}
+
+.message-row.self .message-card {
+    border-radius: 22px 22px 10px 22px;
+}
+
+.message-row.self .message-card::after {
+    right: -8px;
+    left: auto;
+    border-top: 1px solid rgba(57, 182, 255, 0.24);
+    border-right: 1px solid rgba(57, 182, 255, 0.24);
+    border-left: none;
+    border-bottom: none;
+    border-top-right-radius: 6px;
+    background: linear-gradient(180deg, rgba(57, 182, 255, 0.14), rgba(57, 182, 255, 0.08));
+    transform: rotate(24deg);
 }
 
 .message-text,
@@ -449,10 +503,14 @@ input {
 }
 
 .read-receipt {
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: 0.82rem;
-    line-height: 1.5;
+    align-self: flex-end;
+    margin-top: 2px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(7, 16, 24, 0.28);
+    color: #cbdff2;
+    font-size: 0.77rem;
+    line-height: 1.4;
 }
 
 .media-frame,
@@ -717,7 +775,8 @@ input {
     .composer-toolbar,
     .composer,
     .gif-search-bar,
-    .gif-modal-header {
+    .gif-modal-header,
+    .app-actions {
         flex-direction: column;
         align-items: stretch;
     }

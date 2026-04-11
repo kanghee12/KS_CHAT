@@ -480,6 +480,20 @@ def index():
     )
 
 
+@app.route("/manifest.webmanifest")
+def web_manifest():
+    response = send_from_directory(app.static_folder, "manifest.webmanifest")
+    response.mimetype = "application/manifest+json"
+    return response
+
+
+@app.route("/sw.js")
+def service_worker():
+    response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     if storage_client:

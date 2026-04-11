@@ -18,6 +18,9 @@ const nicknameModal = document.getElementById("nicknameModal");
 const nicknameForm = document.getElementById("nicknameForm");
 const nicknameInput = document.getElementById("nicknameInput");
 const nicknameError = document.getElementById("nicknameError");
+const installButton = document.getElementById("installButton");
+const notificationButton = document.getElementById("notificationButton");
+const notificationHint = document.getElementById("notificationHint");
 const gifModal = document.getElementById("gifModal");
 const closeGifModalButton = document.getElementById("closeGifModalButton");
 const gifSearchInput = document.getElementById("gifSearchInput");
@@ -38,9 +41,15 @@ let typingTimer = null;
 let gifQueueTimer = null;
 let gifSearchTimer = null;
 let readQueueTimer = null;
+let deferredInstallPrompt = null;
+let serviceWorkerRegistration = null;
 
 const clientId = getOrCreateClientId();
 const savedNickname = sessionStorage.getItem(nicknameStorageKey) || "";
+const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
 
 if (savedNickname) {
     nicknameInput.value = savedNickname;
@@ -48,6 +57,23 @@ if (savedNickname) {
 
 showEmptyState("이 대화방은 기록이 남습니다. 새 메시지로 시작해보세요.");
 setUploadStatus("전송할 파일이나 GIF를 선택할 수 있어요.");
+syncInstallButton();
+syncNotificationButton();
+registerServiceWorker();
+
+window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    syncInstallButton();
+});
+
+window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    installButton.hidden = false;
+    installButton.textContent = "설치 완료";
+    installButton.disabled = true;
+    setNotificationHint("KS_CHAT이 홈 화면에 설치되었습니다.");
+});
 
 socket.on("connect", () => {
     updateConnectionStatus(
@@ -90,6 +116,7 @@ socket.on("new_message", (message) => {
     removeEmptyState();
     appendMessage(message);
     queueMarkAllMessagesRead();
+    void maybeShowMessageNotification(message);
 });
 
 socket.on("read_updates", (data) => {
@@ -270,6 +297,57 @@ clearHistoryButton.addEventListener("click", () => {
     socket.emit("clear_history");
 });
 
+if (installButton) {
+    installButton.addEventListener("click", async () => {
+        if (isStandalone) {
+            setNotificationHint("이미 홈 화면에 설치되어 있어요.");
+            return;
+        }
+
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            const { outcome } = await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            syncInstallButton();
+
+            if (outcome === "accepted") {
+                setNotificationHint("앱 설치를 진행 중입니다.");
+            } else {
+                setNotificationHint("나중에 다시 설치할 수 있어요.");
+            }
+            return;
+        }
+
+        if (isIos) {
+            setNotificationHint("iPhone에서는 Safari 공유 버튼을 누른 뒤 '홈 화면에 추가'를 선택해주세요.");
+            return;
+        }
+
+        setNotificationHint("브라우저 메뉴에서 '설치' 또는 '홈 화면에 추가'를 선택해주세요.");
+    });
+}
+
+if (notificationButton) {
+    notificationButton.addEventListener("click", async () => {
+        if (!("Notification" in window)) {
+            setNotificationHint("이 브라우저는 웹 알림을 지원하지 않아요.");
+            notificationButton.disabled = true;
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        syncNotificationButton();
+
+        if (permission === "granted") {
+            setNotificationHint("알림이 켜졌어요. 다른 사람이 새 메시지를 보내면 알려드릴게요.");
+        } else if (permission === "denied") {
+            setNotificationHint("알림이 차단되어 있어요. 브라우저 설정에서 허용으로 바꿔주세요.");
+        } else {
+            setNotificationHint("원할 때 다시 알림을 켤 수 있어요.");
+        }
+    });
+}
+
 function emitJoin(nickname) {
     socket.emit("join", {
         nickname,
@@ -299,6 +377,121 @@ function updateConnectionStatus(text, state) {
     if (state) {
         connectionStatus.classList.add(state);
     }
+}
+
+function setNotificationHint(message) {
+    if (notificationHint) {
+        notificationHint.textContent = message;
+    }
+}
+
+async function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) {
+        setNotificationHint("이 브라우저는 앱 설치 기능을 완전히 지원하지 않을 수 있어요.");
+        return;
+    }
+
+    try {
+        serviceWorkerRegistration = await navigator.serviceWorker.register("/sw.js");
+    } catch (_error) {
+        setNotificationHint("앱 설치 기능을 준비하는 데 실패했어요. 새로고침 후 다시 시도해주세요.");
+    }
+}
+
+function syncInstallButton() {
+    if (!installButton) {
+        return;
+    }
+
+    installButton.hidden = false;
+
+    if (isStandalone) {
+        installButton.textContent = "설치 완료";
+        installButton.disabled = true;
+        return;
+    }
+
+    installButton.disabled = false;
+    installButton.textContent = isIos ? "홈 화면 추가" : "앱 설치";
+}
+
+function syncNotificationButton() {
+    if (!notificationButton) {
+        return;
+    }
+
+    if (!("Notification" in window)) {
+        notificationButton.textContent = "알림 미지원";
+        notificationButton.disabled = true;
+        return;
+    }
+
+    if (Notification.permission === "granted") {
+        notificationButton.textContent = "알림 켜짐";
+        notificationButton.classList.add("active");
+        return;
+    }
+
+    notificationButton.classList.remove("active");
+    notificationButton.disabled = false;
+
+    if (Notification.permission === "denied") {
+        notificationButton.textContent = "알림 차단됨";
+        return;
+    }
+
+    notificationButton.textContent = "알림 켜기";
+}
+
+async function maybeShowMessageNotification(message) {
+    if (!currentNickname || message.nickname === currentNickname || !document.hidden) {
+        return;
+    }
+
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+        return;
+    }
+
+    const title = `${message.nickname}님의 새 메시지`;
+    const body = buildNotificationBody(message);
+    const notificationOptions = {
+        body,
+        icon: "/static/icons/icon-192.png",
+        badge: "/static/icons/icon-192.png",
+        tag: `message-${message.id}`,
+        data: { url: "/" },
+    };
+
+    try {
+        if (serviceWorkerRegistration) {
+            await serviceWorkerRegistration.showNotification(title, notificationOptions);
+            return;
+        }
+
+        new Notification(title, notificationOptions);
+    } catch (_error) {
+        // Notification delivery can fail on unsupported platforms.
+    }
+}
+
+function buildNotificationBody(message) {
+    if (message.type === "text") {
+        return message.text || "새 메시지가 도착했습니다.";
+    }
+
+    if (message.type === "image") {
+        return message.text ? `사진 · ${message.text}` : "사진을 보냈어요.";
+    }
+
+    if (message.type === "video") {
+        return message.text ? `영상 · ${message.text}` : "영상을 보냈어요.";
+    }
+
+    if (message.type === "gif") {
+        return message.text ? `GIF · ${message.text}` : "GIF를 보냈어요.";
+    }
+
+    return "새 메시지가 도착했습니다.";
 }
 
 function setComposerEnabled(enabled) {
